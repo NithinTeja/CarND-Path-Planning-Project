@@ -65,6 +65,60 @@ the path has processed since last time.
 
 2. There will be some latency between the simulator running and the path planner returning a path, with optimized code usually its not very long maybe just 1-3 time steps. During this delay the simulator will continue using points that it was last given, because of this its a good idea to store the last points you have used so you can have a smooth transition. previous_path_x, and previous_path_y can be helpful for this transition since they show the last points given to the simulator controller with the processed points already removed. You would either return a path that extends this previous path or make sure to create a new path that has a smooth transition with this last path.
 
+## Rubrics
+
+### Compilation
+The code compiles correctly. This project is done using Visual Studio 2017(Win 32) and is succesfully build without any errors.
+
+### Valid Trajectories
+This project met all the following specifications:
+
+1. The car is able to drive at least 4.32 miles without incident
+2. The car drives according to the speed limit.
+3. Max Acceleration and Jerk are not Exceeded.
+4. Car does not have collisions.
+5. The car stays in its lane, except for the time between changing lanes.
+6. The car is able to change lanes
+
+### Reflection
+The main.cpp file is modified to make the car travel by making lane changes and follow the speed limit. Also, the support provided by Udacity in this [video](https://www.youtube.com/watch?v=7sI3VHFPP0w&feature=youtu.be) helped a lot in path planning. 
+
+### Prediction of cars on left, center and right lane
+Firstly, other cars lane is predicted using sensor fusion data especially through frenet 'd' coordinate [(lines 139)](https://github.com/NithinTeja/CarND-Path-Planning-Project/blob/00fe45c5c951f2b40c2e10b041e7f1382a2611a7/src/main.cpp#L139). Later, using ego car and other cars lane value and frenet 's' coordinate, `car_ahead`, `car_left` and `car_right` status are changed to `true` value (default they are set to `false`)[(lines here)]https://github.com/NithinTeja/CarND-Path-Planning-Project/blob/00fe45c5c951f2b40c2e10b041e7f1382a2611a7/src/main.cpp#L158).
+
+### Behavior planning
+Once the cars status is decided, this part of the code helps in deciding whether to make a lane change, stay in the lane, slow down or accelerate. Below code shows the logic for deciding the previous states. [(lines in main.cpp)](https://github.com/NithinTeja/CarND-Path-Planning-Project/blob/00fe45c5c951f2b40c2e10b041e7f1382a2611a7/src/main.cpp#L197). The ego car prirotize to stay in the center lane if possible. 
+```
+if (car_ahead) { // Car ahead
+			  if (!car_left && lane > 0) {
+				  // if there is no car left and there is a left lane.
+				  lane--; // Change lane left.
+			  }
+			  else if (!car_right && lane != 2) {
+				  // if there is no car right and there is a right lane.
+				  lane++; // Change lane right.
+			  }
+			  else {
+				  speed_diff -= MAX_ACC;
+			  }
+		  }
+		  else {
+			  if (lane != 1) { // if we are not on the center lane.
+				  if ((lane == 0 && !car_right) || (lane == 2 && !car_left)) {
+					  lane = 1; // Back to center.
+				  }
+			  }
+			  if (ref_vel < MAX_SPEED) {
+				  speed_diff += MAX_ACC;
+			  }
+		  }
+ ```
+### Trajectory generation
+This code [(lines in main.cpp here)](https://github.com/NithinTeja/CarND-Path-Planning-Project/blob/00fe45c5c951f2b40c2e10b041e7f1382a2611a7/src/main.cpp#L228)does the calculation of the trajectory based on the speed and lane output from the behavior, car coordinates and previous path points.
+
+First, the last two points of the previous trajectory (or the car position if there are no previous trajectory) are used in conjunction with three points at 30m, 60m, 90m s-distance to initialize the spline calculation. To make the work less complicated to the spline calculation based on those points, the coordinates are transformed (shift and rotation) to local car coordinates.
+
+In order to ensure more continuity on the trajectory (in addition to adding the last two point of the pass trajectory to the spline adjustment), the previous trajectory points are copied to the new trajectory. The rest of the points are calculated by evaluating the spline and transforming the output coordinates to not local coordinates. The speed change is decided on the behavior part of the code, but it is used in that part to increase/decrease speed on every trajectory points instead of doing it for the complete trajectory. 
 ## Tips
 
 A really helpful resource for doing this project and creating smooth trajectories was using http://kluge.in-chemnitz.de/opensource/spline/, the spline function is in a single hearder file is really easy to use.
@@ -140,6 +194,4 @@ that's just a guess.
 One last note here: regardless of the IDE used, every submitted project must
 still be compilable with cmake and make./
 
-## How to write a README
-A well written README file can enhance your project and portfolio.  Develop your abilities to create professional README files by completing [this free course](https://www.udacity.com/course/writing-readmes--ud777).
 
